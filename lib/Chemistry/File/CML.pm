@@ -15,7 +15,7 @@ our $DEBUG = 0;
 
 =head1 NAME
 
-Chemistry::File::CML - CML reader/writer
+Chemistry::File::CML - CML reader
 
 =head1 SYNOPSIS
 
@@ -24,72 +24,21 @@ Chemistry::File::CML - CML reader/writer
     # read a molecule
     my $mol = Chemistry::Mol->read('myfile.cml');
 
-    # write a molecule
-    $mol->write("myfile.cml");
-
-    # use a molecule as a query for substructure matching
-    use Chemistry::Pattern;
-    use Chemistry::Ring;
-    Chemistry::Ring::aromatize_mol($mol);
-
-    my $patt = Chemistry::Pattern->read('query.mol');
-    if ($patt->match($mol)) {
-        print "it matches!\n";
-    }
-
 =cut
 
 Chemistry::Mol->register_format(cml => __PACKAGE__);
 
 =head1 DESCRIPTION
 
-MDL Molfile (V2000) reader/writer.
+Chemical Markup Language reader.
 
-This module automatically registers the 'mdl' format with Chemistry::Mol.
+This module automatically registers the 'cml' format with Chemistry::Mol.
 
-The first three lines of the molfile are stored as $mol->name, 
-$mol->attr("mdlmol/line2"), and $mol->attr("mdlmol/comment").
-
-This version only reads and writes some of the information available in a
-molfile: it reads coordinates, atom and bond types, charges, isotopes,
-radicals, and atom lists. It does not read other things such as
-stereochemistry, 3d properties, etc.
+This version only reads some of the information available in CML files.
+It does not read stereochemistry yet, but this is envisaged in future.
+Writing CML files is not implemented yet too.
 
 This module is part of the PerlMol project, L<https://github.com/perlmol>.
-
-=head2 Query properties
-
-The MDL molfile format supports query properties such as atom lists, and
-special bond types such as "single or double", "single or aromatic", "double or
-aromatic", "ring bond", or "any". These properties are supported by this module
-in conjunction with L<Chemistry::Pattern>. However, support for query properties
-is currently read-only, and the other properties listed in the specification
-are not supported yet.
-
-So that atom and bond objects can use these special query options, the
-conditions are represented as Perl subroutines. The generated code can be
-read from the 'mdlmol/test_sub' attribute:
-
-    $atom->attr('mdlmol/test_sub');
-    $bond->attr('mdlmol/test_sub');
- 
-This may be useful for debugging, such as when an atom doesn't seem to match as
-expected.
-
-=head2 Aromatic Queries
-
-To be able to search for aromatic substructures are represented by Kekule
-structures, molfiles that are read as patterns (with
-C<Chemistry::Pattern->read) are aromatized automatically by using the
-L<Chemistry::Ring> module. The default bond test from Chemistry::Pattern::Bond
-is overridden by one that checks the aromaticity in addition to the bond order.
-The test is,
-
-    $patt->aromatic ?  $bond->aromatic 
-        : (!$bond->aromatic && $patt->order == $bond->order);
-
-That is, aromatic pattern bonds match aromatic bonds, and aliphatic pattern
-bonds match aliphatic bonds with the same bond order.
     
 
 =cut
