@@ -121,113 +121,98 @@ my %BOND_TOPOLOGY_EXPR = (
 );
 
 
-sub read_mol {
-    my ($self, $fh, %opts) = @_;
-    return if $fh->eof;
+sub parse_string {
+    my ($self, $s, %opts) = @_;
 
-    %opts = ( slurp => 1, %opts );
     my $mol_class  = $opts{mol_class}  || 'Chemistry::Mol';
     my $atom_class = $opts{atom_class} || $mol_class->atom_class;
     my $bond_class = $opts{bond_class} || $mol_class->bond_class;
     local $_;
 
-    my $mol = $mol_class->new();
-
-    my $cml = XML::LibXML->load_xml( IO => $fh );
+    my $cml = XML::LibXML->load_xml( string => $s );
     my $xp = XML::LibXML::XPathContext->new( $cml );
     $xp->registerNs( 'cml', 'http://www.xml-cml.org/schema' );
 
-    my ($molecule) = $xp->findnodes( '/cml:cml/cml:molecule' ); # FIXME: There may be more
-    $mol->name( $molecule->getAttribute( 'id' ) ) if $molecule->hasAttribute( 'id' );
+    my @molecules;
+    for my $molecule ($xp->findnodes( '/cml:cml/cml:molecule' )) {
+        my $mol = $mol_class->new;
+        push @molecules, $mol;
 
-    my ($atomArray) = $molecule->getChildrenByTagName( 'atomArray' );
-    return $mol unless $atomArray; # Skip empty molecules
+        $mol->name( $molecule->getAttribute( 'id' ) ) if $molecule->hasAttribute( 'id' );
 
-    # header
-    #~ my $name    = <$fh>; chomp $name;
-    #~ my $line2   = <$fh>; chomp $line2;
-    #~ my $comment = <$fh>; chomp $comment;
-    #~ $mol->name($name);
-    #~ $mol->attr("mdlmol/line2", $line2);
-    #~ $mol->attr("mdlmol/comment", $comment);
+        my ($atomArray) = $molecule->getChildrenByTagName( 'atomArray' );
+        next unless $atomArray; # Skip empty molecules
 
-    my %old_charges;
-    my %old_radicals;
+        my %atom_by_name;
 
-    my %atom_by_name;
+        # atomArray
+        for my $atom ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
+            my ($symbol, $charge, $hydrogen_count, $mass_number);
+            my @coord3;
 
-    # atomArray
-    for my $atom ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
-        my ($symbol, $charge, $hydrogen_count, $mass_number);
-        my @coord3;
+            next unless $atom->hasAttribute( 'id' );
+            my $id = $atom->getAttribute( 'id' );
 
-        next unless $atom->hasAttribute( 'id' );
-        my $id = $atom->getAttribute( 'id' );
+            if( $atom->hasAttribute( 'elementType' ) ) {
+                $symbol = $atom->getAttribute( 'elementType' );
+            }
+            if( $atom->hasAttribute( 'formalCharge' ) ) {
+                $charge = int $atom->getAttribute( 'formalCharge' );
+            }
+            # TODO: Add implicit hydrogens
+            if( $atom->hasAttribute( 'hydrogenCount' ) ) {
+                $hydrogen_count = $atom->getAttribute( 'hydrogenCount' );
+            }
+            if( $atom->hasAttribute( 'isotopeNumber' ) ) {
+                $mass_number = $atom->getAttribute( 'isotopeNumber' );
+            }
+            if( $atom->hasAttribute( 'x3' ) &&
+                $atom->hasAttribute( 'y3' ) &&
+                $atom->hasAttribute( 'z3' ) ) {
+                @coord3 = map { $_ * 1 } $atom->getAttribute( 'x3' ),
+                                         $atom->getAttribute( 'y3' ),
+                                         $atom->getAttribute( 'z3' );
+            }
 
-        if( $atom->hasAttribute( 'elementType' ) ) {
-            $symbol = $atom->getAttribute( 'elementType' );
+            $atom_by_name{$id} =
+                $mol->new_atom(
+                    name           => $id,
+                    symbol         => $symbol,
+                    formal_charge  => $charge,
+                    (@coord3 ? (coords => \@coord3) : ()),
+                    mass_number    => $mass_number,
+                );
         }
-        if( $atom->hasAttribute( 'formalCharge' ) ) {
-            $charge = int $atom->getAttribute( 'formalCharge' );
-        }
-        # TODO: Add implicit hydrogens
-        if( $atom->hasAttribute( 'hydrogenCount' ) ) {
-            $hydrogen_count = $atom->getAttribute( 'hydrogenCount' );
-        }
-        if( $atom->hasAttribute( 'isotopeNumber' ) ) {
-            $mass_number = $atom->getAttribute( 'isotopeNumber' );
-        }
-        if( $atom->hasAttribute( 'x3' ) &&
-            $atom->hasAttribute( 'y3' ) &&
-            $atom->hasAttribute( 'z3' ) ) {
-            @coord3 = map { $_ * 1 } $atom->getAttribute( 'x3' ),
-                                     $atom->getAttribute( 'y3' ),
-                                     $atom->getAttribute( 'z3' );
+
+        my @bonds;
+        my( $bondArray ) = $molecule->getChildrenByTagName( 'bondArray' );
+        if( $bondArray ) {
+            @bonds = $bondArray->getChildrenByTagName( 'bond' );
         }
 
-        $atom_by_name{$id} =
-            $mol->new_atom(
-                name           => $id,
-                symbol         => $symbol,
-                formal_charge  => $charge,
-                (@coord3 ? (coords => \@coord3) : ()),
-                mass_number    => $mass_number,
+        # bond block
+        for my $bond (@bonds) { # for each bond...
+            my $order = my $type = $bond->getAttribute( 'order' );
+            $order = 1 unless $order =~ /^[123]$/;
+            $mol->new_bond(
+                type => $type, 
+                atoms => [map { $atom_by_name{$_} } split ' ', $bond->getAttribute( 'atomRefs2' )],
+                order => $order,
             );
+            #~ if ($mol->isa('Chemistry::Pattern')) {
+                #~ $self->bond_expr($bond, $i, $type, $topology);
+            #~ }
+        }
+
+        $mol->add_implicit_hydrogens;
+
+        if ($mol->isa('Chemistry::Pattern')) {
+            require Chemistry::Ring;
+            Chemistry::Ring::aromatize_mol($mol);
+        }
     }
 
-    my @bonds;
-    my( $bondArray ) = $molecule->getChildrenByTagName( 'bondArray' );
-    if( $bondArray ) {
-        @bonds = $bondArray->getChildrenByTagName( 'bond' );
-    }
-
-    # bond block
-    for my $bond (@bonds) { # for each bond...
-        my $order = my $type = $bond->getAttribute( 'order' );
-        $order = 1 unless $order =~ /^[123]$/;
-        $mol->new_bond(
-            type => $type, 
-            atoms => [map { $atom_by_name{$_} } split ' ', $bond->getAttribute( 'atomRefs2' )],
-            order => $order,
-        );
-        #~ if ($mol->isa('Chemistry::Pattern')) {
-            #~ $self->bond_expr($bond, $i, $type, $topology);
-        #~ }
-    }
-
-    # make sure we get to the end of the file
-    if ($opts{slurp}) {
-        1 while <$fh>;
-    }
-
-    $mol->add_implicit_hydrogens;
-
-    if ($mol->isa('Chemistry::Pattern')) {
-        require Chemistry::Ring;
-        Chemistry::Ring::aromatize_mol($mol);
-    }
-
-    return $mol;
+    return @molecules;
 }
 
 sub bond_expr {
