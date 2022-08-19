@@ -151,12 +151,6 @@ sub read_mol {
     #~ $mol->attr("mdlmol/line2", $line2);
     #~ $mol->attr("mdlmol/comment", $comment);
 
-    # counts line
-    #~ defined ($_ = <$fh>) or croak "unexpected end of file";
-    #~ my ($na, $nb, undef, undef, $is_chiral) = unpack("A3A3A3A3A3", $_);
-
-    #~ $mol->attr("mdlmol/chiral", int $is_chiral);
-
     my %old_charges;
     my %old_radicals;
 
@@ -164,7 +158,7 @@ sub read_mol {
 
     # atomArray
     for my $atom ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
-        my ($symbol, $charge, $hydrogen_count);
+        my ($symbol, $charge, $hydrogen_count, $mass_number);
         my @coord3;
 
         next unless $atom->hasAttribute( 'id' );
@@ -176,8 +170,12 @@ sub read_mol {
         if( $atom->hasAttribute( 'formalCharge' ) ) {
             $charge = int $atom->getAttribute( 'formalCharge' );
         }
+        # TODO: Add implicit hydrogens
         if( $atom->hasAttribute( 'hydrogenCount' ) ) {
             $hydrogen_count = $atom->getAttribute( 'hydrogenCount' );
+        }
+        if( $atom->hasAttribute( 'isotopeNumber' ) ) {
+            $mass_number = $atom->getAttribute( 'isotopeNumber' );
         }
         if( $atom->hasAttribute( 'x3' ) &&
             $atom->hasAttribute( 'y3' ) &&
@@ -187,26 +185,13 @@ sub read_mol {
                                      $atom->getAttribute( 'z3' );
         }
 
-        #~ my $mass_number;
-        #~ if( int $mass && eval { require Chemistry::Isotope } ) {
-            #~ my $abundance =
-                #~ Chemistry::Isotope::isotope_abundance($symbol);
-            #~ ($mass_number) = sort { $abundance->{$b} cmp
-                                    #~ $abundance->{$a} }
-                                  #~ sort keys %$abundance;
-            #~ $mass_number += $mass;
-        #~ } elsif( int $mass ) {
-            #~ warn "no Chemistry::Isotope, cannot read mass number " .
-                 #~ "from atom block\n";
-        #~ }
         $atom_by_name{$id} =
             $mol->new_atom(
                 name           => $id,
                 symbol         => $symbol,
                 formal_charge  => $charge,
                 (@coord3 ? (coords => \@coord3) : ()),
-                # coords         => [$x*1, $y*1, $z*1],
-                # mass_number    => $mass_number,
+                mass_number    => $mass_number,
             );
     }
 
