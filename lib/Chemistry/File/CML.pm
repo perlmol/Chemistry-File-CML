@@ -107,7 +107,7 @@ sub parse_string {
             @bonds = $bondArray->getChildrenByTagName( 'bond' );
         }
 
-        # bond block
+        # bondArray
         for my $bond (@bonds) { # for each bond...
             my $order = my $type = $bond->getAttribute( 'order' );
             $order = 1 unless $order =~ /^[123]$/;
@@ -115,6 +115,7 @@ sub parse_string {
                 type => $type, 
                 atoms => [map { $atom_by_name{$_} } split ' ', $bond->getAttribute( 'atomRefs2' )],
                 order => $order,
+                ($type eq 'A' ? (aromatic => 1) : ()),
             );
         }
 
