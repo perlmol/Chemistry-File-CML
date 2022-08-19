@@ -149,7 +149,6 @@ sub parse_string {
             if( $element->hasAttribute( 'formalCharge' ) ) {
                 $atom->formal_charge( int $element->getAttribute( 'formalCharge' ) );
             }
-            # TODO: Add implicit hydrogens
             if( $element->hasAttribute( 'hydrogenCount' ) ) {
                 $hydrogens_by_id{$atom->id} = int $element->getAttribute( 'hydrogenCount' );
             }
