@@ -7,6 +7,7 @@ use base 'Chemistry::File';
 use Chemistry::Mol;
 use Carp;
 use List::Util;
+use XML::LibXML;
 use strict;
 use warnings;
 
@@ -24,7 +25,7 @@ Chemistry::File::CML - CML reader/writer
     my $mol = Chemistry::Mol->read('myfile.cml');
 
     # write a molecule
-    $mol->write("myfile.mol");
+    $mol->write("myfile.cml");
 
     # use a molecule as a query for substructure matching
     use Chemistry::Pattern;
@@ -132,49 +133,64 @@ sub read_mol {
 
     my $mol = $mol_class->new();
 
+    my $cml = XML::LibXML->load_xml( IO => $fh );
+    my $xp = XML::LibXML::XPathContext->new( $cml );
+    $xp->registerNs( 'cml', 'http://www.xml-cml.org/schema' );
+
+    my ($molecule) = $xp->findnodes( '/cml:cml/cml:molecule' ); # FIXME: There may be more
+    my ($atomArray) = $molecule->getChildrenByTagName( 'atomArray' );
+    return $mol unless $atomArray; # Skip empty molecules
+
+    my $n = 0;
+
     # header
-    my $name    = <$fh>; chomp $name;
-    my $line2   = <$fh>; chomp $line2;
-    my $comment = <$fh>; chomp $comment;
-    $mol->name($name);
-    $mol->attr("mdlmol/line2", $line2);
-    $mol->attr("mdlmol/comment", $comment);
+    #~ my $name    = <$fh>; chomp $name;
+    #~ my $line2   = <$fh>; chomp $line2;
+    #~ my $comment = <$fh>; chomp $comment;
+    #~ $mol->name($name);
+    #~ $mol->attr("mdlmol/line2", $line2);
+    #~ $mol->attr("mdlmol/comment", $comment);
 
     # counts line
-    defined ($_ = <$fh>) or croak "unexpected end of file";
-    my ($na, $nb, undef, undef, $is_chiral) = unpack("A3A3A3A3A3", $_);
+    #~ defined ($_ = <$fh>) or croak "unexpected end of file";
+    #~ my ($na, $nb, undef, undef, $is_chiral) = unpack("A3A3A3A3A3", $_);
 
-    $mol->attr("mdlmol/chiral", int $is_chiral);
+    #~ $mol->attr("mdlmol/chiral", int $is_chiral);
 
     my %old_charges;
     my %old_radicals;
 
-    # atom block
-    for my $i (1 .. $na) { # for each atom...
-        defined (my $line = <$fh>) or croak "unexpected end of file";
-        my ($x, $y, $z, $symbol, $mass, $charge)
-            = unpack("A10A10A10xA3A2A3", $line);
-        
-        $old_charges{$i} = $OLD_CHARGE_MAP{$charge}
-            if $OLD_CHARGE_MAP{$charge};
-        $old_radicals{$i} = 2
-            if $charge && $charge == 4;
-        my $mass_number;
-        if( int $mass && eval { require Chemistry::Isotope } ) {
-            my $abundance =
-                Chemistry::Isotope::isotope_abundance($symbol);
-            ($mass_number) = sort { $abundance->{$b} cmp
-                                    $abundance->{$a} }
-                                  sort keys %$abundance;
-            $mass_number += $mass;
-        } elsif( int $mass ) {
-            warn "no Chemistry::Isotope, cannot read mass number " .
-                 "from atom block\n";
+    # atomArray
+    for my $atom ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
+        my ($symbol, $charge, $hydrogen_count);
+
+        if( $atom->hasAttribute( 'elementType' ) ) {
+            $symbol = $atom->getAttribute( 'elementType' );
         }
+        if( $atom->hasAttribute( 'formalCharge' ) ) {
+            $charge = int $atom->getAttribute( 'formalCharge' );
+        }
+        if( $atom->hasAttribute( 'hydrogenCount' ) ) {
+            $hydrogen_count = $atom->getAttribute( 'hydrogenCount' );
+        }
+
+        #~ my $mass_number;
+        #~ if( int $mass && eval { require Chemistry::Isotope } ) {
+            #~ my $abundance =
+                #~ Chemistry::Isotope::isotope_abundance($symbol);
+            #~ ($mass_number) = sort { $abundance->{$b} cmp
+                                    #~ $abundance->{$a} }
+                                  #~ sort keys %$abundance;
+            #~ $mass_number += $mass;
+        #~ } elsif( int $mass ) {
+            #~ warn "no Chemistry::Isotope, cannot read mass number " .
+                 #~ "from atom block\n";
+        #~ }
         $mol->new_atom(
-            symbol         => $symbol, 
-            coords         => [$x*1, $y*1, $z*1],
-            mass_number    => $mass_number,
+            symbol         => $symbol,
+            formal_charge  => $charge,
+            # coords         => [$x*1, $y*1, $z*1],
+            # mass_number    => $mass_number,
         );
     }
 
@@ -193,30 +209,6 @@ sub read_mol {
         if ($mol->isa('Chemistry::Pattern')) {
             $self->bond_expr($bond, $i, $type, $topology);
         }
-    }
-
-    # properties block
-    while (<$fh>) {
-        if (/^M  END/ or /^\$\$\$\$/) {
-            last;
-        } elsif (/^M  (...)/) { # generic extended property handler
-            if ($1 eq 'CHG' or $1 eq 'RAD'){ # XXX
-                # clear old-style info
-                %old_radicals = (); 
-                %old_charges  = ();
-            }
-
-            my $method = "M_$1";
-            $self->$method($mol, $_) if $self->can($method);
-        }
-    }
-
-    # add old-style charges and radicals if they still apply
-    while (my ($key, $val) = each %old_charges) {
-        $mol->atoms($key)->formal_charge($val);
-    }
-    while (my ($key, $val) = each %old_radicals) {
-        $mol->atoms($key)->formal_radical($val);
     }
 
     # make sure we get to the end of the file
