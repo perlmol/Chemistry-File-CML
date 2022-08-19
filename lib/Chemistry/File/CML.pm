@@ -160,14 +160,16 @@ sub read_mol {
     my %old_charges;
     my %old_radicals;
 
+    my %atom_by_name;
+
     # atomArray
     for my $atom ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
-        my ($id, $symbol, $charge, $hydrogen_count);
+        my ($symbol, $charge, $hydrogen_count);
         my @coord3;
 
-        if( $atom->hasAttribute( 'id' ) ) {
-            $id = $atom->getAttribute( 'id' );
-        }
+        next unless $atom->hasAttribute( 'id' );
+        my $id = $atom->getAttribute( 'id' );
+
         if( $atom->hasAttribute( 'elementType' ) ) {
             $symbol = $atom->getAttribute( 'elementType' );
         }
@@ -197,14 +199,15 @@ sub read_mol {
             #~ warn "no Chemistry::Isotope, cannot read mass number " .
                  #~ "from atom block\n";
         #~ }
-        $mol->new_atom(
-            name           => $id,
-            symbol         => $symbol,
-            formal_charge  => $charge,
-            (@coord3 ? (coords => \@coord3) : ()),
-            # coords         => [$x*1, $y*1, $z*1],
-            # mass_number    => $mass_number,
-        );
+        $atom_by_name{$id} =
+            $mol->new_atom(
+                name           => $id,
+                symbol         => $symbol,
+                formal_charge  => $charge,
+                (@coord3 ? (coords => \@coord3) : ()),
+                # coords         => [$x*1, $y*1, $z*1],
+                # mass_number    => $mass_number,
+            );
     }
 
     my @bonds;
@@ -215,19 +218,16 @@ sub read_mol {
 
     # bond block
     for my $bond (@bonds) { # for each bond...
-        no warnings 'numeric';
-        defined ($_ = <$fh>) or croak "unexpected end of file";
-        my ($a1, $a2, $type, $stereo, $topology, $rxn) 
-            = map {$_*1} unpack("A3A3A3A3x3A3A3", $_);
-        my $order = $type =~ /^[123]$/ ? $type : 1;
-        my $bond = $mol->new_bond(
+        my $order = my $type = $bond->getAttribute( 'order' );
+        $order = 1 unless $order =~ /^[123]$/;
+        $mol->new_bond(
             type => $type, 
-            atoms => [$mol->atoms($a1,$a2)],
+            atoms => [map { $atom_by_name{$_} } split ' ', $bond->getAttribute( 'atomRefs2' )],
             order => $order,
         );
-        if ($mol->isa('Chemistry::Pattern')) {
-            $self->bond_expr($bond, $i, $type, $topology);
-        }
+        #~ if ($mol->isa('Chemistry::Pattern')) {
+            #~ $self->bond_expr($bond, $i, $type, $topology);
+        #~ }
     }
 
     # make sure we get to the end of the file
