@@ -132,7 +132,7 @@ sub parse_string {
         next unless $atomArray; # Skip empty molecules
 
         my %atom_by_name;
-        my %hydrogens_by_name;
+        my %hydrogens_by_id;
 
         # atomArray
         for my $element ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
@@ -151,7 +151,7 @@ sub parse_string {
             }
             # TODO: Add implicit hydrogens
             if( $element->hasAttribute( 'hydrogenCount' ) ) {
-                $hydrogens_by_name{$id} = int $element->getAttribute( 'hydrogenCount' );
+                $hydrogens_by_id{$atom->id} = int $element->getAttribute( 'hydrogenCount' );
             }
             if( $element->hasAttribute( 'isotopeNumber' ) ) {
                 $atom->mass_number( int $element->getAttribute( 'isotopeNumber' ) );
@@ -185,7 +185,19 @@ sub parse_string {
             #~ }
         }
 
-        $mol->add_implicit_hydrogens;
+        # calculate implicit hydrogens
+        for my $id (sort keys %hydrogens_by_id) {
+            my $atom = $mol->by_id( $id );
+            my $explicit_hydrogens = scalar grep { $_->symbol eq 'H' }
+                                                 $atom->neighbors;
+            if( $explicit_hydrogens > $hydrogens_by_id{$id} ) {
+                warn 'total number of attached hydrogen atoms is ' .
+                     "less than the number of explicit hydrogen atoms\n";
+                next;
+            }
+            next if $explicit_hydrogens == $hydrogens_by_id{$id};
+            $atom->implicit_hydrogens( $hydrogens_by_id{$id} - $explicit_hydrogens );
+        }
 
         if ($mol->isa('Chemistry::Pattern')) {
             require Chemistry::Ring;
