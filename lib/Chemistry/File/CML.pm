@@ -121,8 +121,13 @@ sub parse_string {
     my $xp = XML::LibXML::XPathContext->new( $cml );
     $xp->registerNs( 'cml', 'http://www.xml-cml.org/schema' );
 
+    my @cml_molecules = $xp->findnodes( '/cml:cml/cml:molecule' );
+    if( !@cml_molecules ) {
+        @cml_molecules = $xp->findnodes( '/cml:molecule' ); # Somewhy some CMLs need this
+    }
+
     my @molecules;
-    for my $molecule ($xp->findnodes( '/cml:cml/cml:molecule' )) {
+    for my $molecule (@cml_molecules) {
         my $mol = $mol_class->new;
         push @molecules, $mol;
 
