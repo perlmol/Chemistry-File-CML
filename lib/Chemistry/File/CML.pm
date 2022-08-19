@@ -248,69 +248,6 @@ sub file_is {
     $fname =~ /\.cml$/i;
 }
 
-sub write_string {
-    my ($self, $mol, %opts) = @_;
-
-    no warnings 'uninitialized';
-    my $s = sprintf "%s\n      perlmol   \n\n", $mol->name;
-    $s .= sprintf "%3i%3i%3i%3i%3i%3i%3i%3i%3i%3i%3i%6s\n", 
-        0+$mol->atoms, 0+$mol->bonds, 
-        0, 0, 0, 0, 0, 0, 0, 0, 999, "V2000";   # "counts" line
-
-    my $i = 1;
-    my %idx_map;
-    my @charged_atoms;
-    my @isotope_atoms;
-    my @radical_atoms;
-    for my $atom ($mol->atoms) {
-        my ($x, $y, $z) = $atom->coords->array;
-
-        $s .= sprintf 
-            "%10.4f%10.4f%10.4f %-3s%2i%3i%3i%3i%3i%3i%3i%3i%3i%3i%3i%3i\n",
-            $x, $y, $z, $atom->symbol,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
-        push @charged_atoms, $i if $atom->formal_charge;
-        push @isotope_atoms, $i if $atom->mass_number;
-        push @radical_atoms, $i if $atom->formal_radical;
-        $idx_map{$atom->id} = $i++;
-    }
-
-    for my $bond ($mol->bonds) {
-        my ($a1, $a2) = map {$idx_map{$_->id}} $bond->atoms;
-        $s .= sprintf "%3i%3i%3i%3i%3i%3i%3i\n", 
-            $a1, $a2, $bond->order,
-            0, 0, 0, 0;
-    }
-    
-    while (@charged_atoms) {
-        my $n = @charged_atoms > 8 ? 8 : @charged_atoms;
-        $s .= "M  CHG  $n";
-        for my $key (splice @charged_atoms, 0, $n) {
-            $s .= sprintf "%4d%4d", $key, $mol->atoms($key)->formal_charge;
-        }
-        $s .= "\n";
-    }
-    while (@isotope_atoms) {
-        my $n = @isotope_atoms > 8 ? 8 : @isotope_atoms;
-        $s .= "M  ISO  $n";
-        for my $key (splice @isotope_atoms, 0, $n) {
-            $s .= sprintf "%4d%4d", $key, $mol->atoms($key)->mass_number;
-        }
-        $s .= "\n";
-    }
-    while (@radical_atoms) {
-        my $n = @radical_atoms > 8 ? 8 : @radical_atoms;
-        $s .= "M  RAD  $n";
-        for my $key (splice @radical_atoms, 0, $n) {
-            $s .= sprintf "%4d%4d", $key, $mol->atoms($key)->formal_radical;
-        }
-        $s .= "\n";
-    }
-
-    $s .= "M  END\n";
-    $s;
-}
-
 1;
 
 =head1 SOURCE CODE REPOSITORY
