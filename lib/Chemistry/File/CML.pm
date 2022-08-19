@@ -5,8 +5,6 @@ package Chemistry::File::CML;
 
 use base 'Chemistry::File';
 use Chemistry::Mol;
-use Carp;
-use List::Util;
 use XML::LibXML;
 use strict;
 use warnings;
