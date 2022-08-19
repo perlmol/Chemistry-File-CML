@@ -94,18 +94,7 @@ bonds match aliphatic bonds with the same bond order.
 
 =cut
 
-
 # some constants, based on tables from the file format specification
-
-my %OLD_CHARGE_MAP = (
-    1 => 3,
-    2 => 2,
-    3 => 1,
-    4 => 0,
-    5 => -1,
-    6 => -2,
-    7 => -3,
-);
 
 my %BOND_TYPE_EXPR = (
     4 => '($bond->aromatic)',
@@ -250,7 +239,6 @@ sub name_is {
     my ($self, $fname) = @_;
     $fname =~ /\.cml$/i;
 }
-
 
 sub file_is {
     my ($self, $fname) = @_;
