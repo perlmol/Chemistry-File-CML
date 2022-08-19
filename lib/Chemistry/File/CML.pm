@@ -109,7 +109,6 @@ my %BOND_TOPOLOGY_EXPR = (
     2 => '! @{$bond->attr("ring/rings")||[]}',
 );
 
-
 sub parse_string {
     my ($self, $s, %opts) = @_;
 
@@ -133,44 +132,37 @@ sub parse_string {
         next unless $atomArray; # Skip empty molecules
 
         my %atom_by_name;
+        my %hydrogens_by_name;
 
         # atomArray
-        for my $atom ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
+        for my $element ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
             my ($symbol, $charge, $hydrogen_count, $mass_number);
             my @coord3;
 
-            next unless $atom->hasAttribute( 'id' );
-            my $id = $atom->getAttribute( 'id' );
+            next unless $element->hasAttribute( 'id' );
+            my $id = $element->getAttribute( 'id' );
+            my $atom = $atom_by_name{$id} = $mol->new_atom( name => $id );
 
-            if( $atom->hasAttribute( 'elementType' ) ) {
-                $symbol = $atom->getAttribute( 'elementType' );
+            if( $element->hasAttribute( 'elementType' ) ) {
+                $atom->symbol( $element->getAttribute( 'elementType' ) );
             }
-            if( $atom->hasAttribute( 'formalCharge' ) ) {
-                $charge = int $atom->getAttribute( 'formalCharge' );
+            if( $element->hasAttribute( 'formalCharge' ) ) {
+                $atom->formal_charge( int $element->getAttribute( 'formalCharge' ) );
             }
             # TODO: Add implicit hydrogens
-            if( $atom->hasAttribute( 'hydrogenCount' ) ) {
-                $hydrogen_count = $atom->getAttribute( 'hydrogenCount' );
+            if( $element->hasAttribute( 'hydrogenCount' ) ) {
+                $hydrogens_by_name{$id} = int $element->getAttribute( 'hydrogenCount' );
             }
-            if( $atom->hasAttribute( 'isotopeNumber' ) ) {
-                $mass_number = $atom->getAttribute( 'isotopeNumber' );
+            if( $element->hasAttribute( 'isotopeNumber' ) ) {
+                $atom->mass_number( int $element->getAttribute( 'isotopeNumber' ) );
             }
-            if( $atom->hasAttribute( 'x3' ) &&
-                $atom->hasAttribute( 'y3' ) &&
-                $atom->hasAttribute( 'z3' ) ) {
-                @coord3 = map { $_ * 1 } $atom->getAttribute( 'x3' ),
-                                         $atom->getAttribute( 'y3' ),
-                                         $atom->getAttribute( 'z3' );
+            if( $element->hasAttribute( 'x3' ) &&
+                $element->hasAttribute( 'y3' ) &&
+                $element->hasAttribute( 'z3' ) ) {
+                $atom->coords( map { $_ * 1 } $element->getAttribute( 'x3' ),
+                                              $element->getAttribute( 'y3' ),
+                                              $element->getAttribute( 'z3' ) );
             }
-
-            $atom_by_name{$id} =
-                $mol->new_atom(
-                    name           => $id,
-                    symbol         => $symbol,
-                    formal_charge  => $charge,
-                    (@coord3 ? (coords => \@coord3) : ()),
-                    mass_number    => $mass_number,
-                );
         }
 
         my @bonds;
