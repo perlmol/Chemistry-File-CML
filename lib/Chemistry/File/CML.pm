@@ -138,10 +138,10 @@ sub read_mol {
     $xp->registerNs( 'cml', 'http://www.xml-cml.org/schema' );
 
     my ($molecule) = $xp->findnodes( '/cml:cml/cml:molecule' ); # FIXME: There may be more
+    $mol->name( $molecule->getAttribute( 'id' ) ) if $molecule->hasAttribute( 'id' );
+
     my ($atomArray) = $molecule->getChildrenByTagName( 'atomArray' );
     return $mol unless $atomArray; # Skip empty molecules
-
-    my $n = 0;
 
     # header
     #~ my $name    = <$fh>; chomp $name;
