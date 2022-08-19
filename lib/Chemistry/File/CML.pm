@@ -43,21 +43,6 @@ This module is part of the PerlMol project, L<https://github.com/perlmol>.
 
 =cut
 
-# some constants, based on tables from the file format specification
-
-my %BOND_TYPE_EXPR = (
-    4 => '($bond->aromatic)',
-    5 => '($bond->order == 1 or $bond->order == 2)',
-    6 => '($bond->order == 1 or $bond->aromatic)',
-    7 => '($bond->order == 2 or $bond->aromatic)',
-    8 => '(1)',                                         # any bond
-);
-
-my %BOND_TOPOLOGY_EXPR = (
-    1 => '@{$bond->attr("ring/rings")||[]}',
-    2 => '! @{$bond->attr("ring/rings")||[]}',
-);
-
 sub parse_string {
     my ($self, $s, %opts) = @_;
 
@@ -133,9 +118,6 @@ sub parse_string {
                 atoms => [map { $atom_by_name{$_} } split ' ', $bond->getAttribute( 'atomRefs2' )],
                 order => $order,
             );
-            #~ if ($mol->isa('Chemistry::Pattern')) {
-                #~ $self->bond_expr($bond, $i, $type, $topology);
-            #~ }
         }
 
         # calculate implicit hydrogens
@@ -151,45 +133,9 @@ sub parse_string {
             next if $explicit_hydrogens == $hydrogens_by_id{$id};
             $atom->implicit_hydrogens( $hydrogens_by_id{$id} - $explicit_hydrogens );
         }
-
-        if ($mol->isa('Chemistry::Pattern')) {
-            require Chemistry::Ring;
-            Chemistry::Ring::aromatize_mol($mol);
-        }
     }
 
     return @molecules;
-}
-
-sub bond_expr {
-    my ($self, $bond, $i, $type, $topology) = @_;
-    my @bond_exprs;
-    my $s = $BOND_TOPOLOGY_EXPR{$topology};
-    push @bond_exprs, $s if $s;
-    $s = $BOND_TYPE_EXPR{$type};
-    push @bond_exprs, $s if $s;
-    if (@bond_exprs) {
-        my $expr = join " and ", @bond_exprs;
-        my $sub_txt = <<SUB;
-            sub {
-                no warnings;
-                my (\$patt, \$bond) = \@_;
-                $expr;
-            };
-SUB
-        print "MDLMol bond($i) sub: <<<<$sub_txt>>>\n" if $DEBUG;
-        $bond->attr('mdlmol/test_sub' => $sub_txt);
-        $bond->test_sub(eval $sub_txt);
-    } else { # default bond sub
-        $bond->test_sub(\&default_bond_test);
-    }
-}
-
-sub default_bond_test {
-    no warnings;
-    my ($patt, $bond) = @_;
-    $patt->aromatic ?  $bond->aromatic 
-        : (!$bond->aromatic && $patt->order == $bond->order);
 }
 
 sub name_is {
