@@ -162,8 +162,12 @@ sub read_mol {
 
     # atomArray
     for my $atom ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
-        my ($symbol, $charge, $hydrogen_count);
+        my ($id, $symbol, $charge, $hydrogen_count);
+        my @coord3;
 
+        if( $atom->hasAttribute( 'id' ) ) {
+            $id = $atom->getAttribute( 'id' );
+        }
         if( $atom->hasAttribute( 'elementType' ) ) {
             $symbol = $atom->getAttribute( 'elementType' );
         }
@@ -172,6 +176,13 @@ sub read_mol {
         }
         if( $atom->hasAttribute( 'hydrogenCount' ) ) {
             $hydrogen_count = $atom->getAttribute( 'hydrogenCount' );
+        }
+        if( $atom->hasAttribute( 'x3' ) &&
+            $atom->hasAttribute( 'y3' ) &&
+            $atom->hasAttribute( 'z3' ) ) {
+            @coord3 = map { $_ * 1 } $atom->getAttribute( 'x3' ),
+                                     $atom->getAttribute( 'y3' ),
+                                     $atom->getAttribute( 'z3' );
         }
 
         #~ my $mass_number;
@@ -187,15 +198,23 @@ sub read_mol {
                  #~ "from atom block\n";
         #~ }
         $mol->new_atom(
+            name           => $id,
             symbol         => $symbol,
             formal_charge  => $charge,
+            (@coord3 ? (coords => \@coord3) : ()),
             # coords         => [$x*1, $y*1, $z*1],
             # mass_number    => $mass_number,
         );
     }
 
+    my @bonds;
+    my( $bondArray ) = $molecule->getChildrenByTagName( 'bondArray' );
+    if( $bondArray ) {
+        @bonds = $bondArray->getChildrenByTagName( 'bond' );
+    }
+
     # bond block
-    for my $i (1 .. $nb) { # for each bond...
+    for my $bond (@bonds) { # for each bond...
         no warnings 'numeric';
         defined ($_ = <$fh>) or croak "unexpected end of file";
         my ($a1, $a2, $type, $stereo, $topology, $rxn) 
