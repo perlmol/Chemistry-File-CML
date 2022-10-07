@@ -101,6 +101,23 @@ sub parse_string {
             }
         }
 
+        # Second pass through atoms to set chirality (if supported)
+        for my $element ($atomArray->getChildrenByTagName( 'atom' )) { # for each atom...
+            my( $atomParity ) = $element->getChildrenByTagName( 'atomParity' );
+            next unless $atomParity &&
+                        $atomParity->hasAttribute( 'atomRefs4' ) &&
+                        $atomParity->textContent =~ /^-?1$/;
+
+            next unless $element->hasAttribute( 'id' );
+            my $id = $element->getAttribute( 'id' );
+            my $atom = $atom_by_name{$id};
+            next unless $atom->can( 'chirality' );
+
+            my @atoms = map { $atom_by_name{$_} }
+                            split ' ', $atomParity->getAttribute( 'atomRefs4' );
+            $atom->chirality( @atoms, int $atomParity->textContent );
+        }
+
         my @bonds;
         my( $bondArray ) = $molecule->getChildrenByTagName( 'bondArray' );
         if( $bondArray ) {
