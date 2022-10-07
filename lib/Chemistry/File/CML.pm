@@ -111,12 +111,31 @@ sub parse_string {
         for my $bond (@bonds) { # for each bond...
             my $order = my $type = $bond->getAttribute( 'order' );
             $order = 1 unless $order =~ /^[123]$/;
-            $mol->new_bond(
+
+            my @atoms = map { $atom_by_name{$_} }
+                            split ' ', $bond->getAttribute( 'atomRefs2' );
+            my $mol_bond = $mol->new_bond(
                 type => $type, 
-                atoms => [map { $atom_by_name{$_} } split ' ', $bond->getAttribute( 'atomRefs2' )],
+                atoms => \@atoms,
                 order => $order,
                 ($type eq 'A' ? (aromatic => 1) : ()),
             );
+
+            my( $bondStereo ) = $bond->getChildrenByTagName( 'bondStereo' );
+            if( $mol_bond->can( 'cistrans' ) &&
+                $bondStereo &&
+                $bondStereo->hasAttribute( 'atomRefs4' ) &&
+                $bondStereo->textContent =~ /^[CT]$/ ) {
+                my @cistrans_atoms = map { $atom_by_name{$_} }
+                                         split ' ', $bondStereo->getAttribute( 'atomRefs4' );
+                if( $cistrans_atoms[1] ne $atoms[0] ) {
+                    ( $cistrans_atoms[0], $cistrans_atoms[3] ) =
+                        ( $cistrans_atoms[3], $cistrans_atoms[0] );
+                    $mol_bond->cistrans( $cistrans_atoms[0],
+                                         $cistrans_atoms[3],
+                                         $bondStereo->textContent eq 'C' ? 'cis' : 'trans' );
+                }
+            }
         }
 
         # calculate implicit hydrogens
