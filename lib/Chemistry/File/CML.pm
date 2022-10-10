@@ -55,18 +55,18 @@ sub parse_string {
 
     my @cml_molecules = $xp->findnodes( '/cml:cml/cml:molecule' );
     if( !@cml_molecules ) {
-        @cml_molecules = $xp->findnodes( '/cml:molecule' ); # Somewhy some CMLs need this
+        @cml_molecules = $xp->findnodes( '//cml:molecule' ); # Somewhy some CMLs need this
     }
 
     my @molecules;
     for my $molecule (@cml_molecules) {
         my $mol = $mol_class->new;
-        push @molecules, $mol;
-
         $mol->name( $molecule->getAttribute( 'id' ) ) if $molecule->hasAttribute( 'id' );
 
         my ($atomArray) = $molecule->getChildrenByTagName( 'atomArray' );
         next unless $atomArray; # Skip empty molecules
+
+        push @molecules, $mol;
 
         my %atom_by_name;
         my %hydrogens_by_id;
