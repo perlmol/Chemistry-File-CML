@@ -186,6 +186,14 @@ sub file_is {
     $fname =~ /\.cml$/i;
 }
 
+sub write_header {
+    print "<?xml version=\"1.0\"?>\n<cml xmlns=\"http://www.xml-cml.org/schema\">\n";
+}
+
+sub write_footer {
+    print "</cml>\n";
+}
+
 1;
 
 =head1 SOURCE CODE REPOSITORY
