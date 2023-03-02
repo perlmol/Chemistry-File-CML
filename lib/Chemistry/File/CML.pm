@@ -180,6 +180,7 @@ sub write_string {
     my ($self, $mol, %opts) = @_;
     my $cml = sprintf '  <molecule id="%s">' . "\n", $mol->name;
 
+    # Write the atomArray
     $cml .= "    <atomArray>\n";
     for my $atom ($mol->atoms) {
         my %attributes = ( id => $atom->name,
@@ -196,6 +197,17 @@ sub write_string {
                 "/>\n";
     }
     $cml .= "    </atomArray>\n";
+
+    # Write the bondArray (if any)
+    if ($mol->bonds) {
+        $cml .= "    <bondArray>\n";
+        for my $bond ($mol->bonds) {
+            $cml .= '      <bond atomRefs2="' .
+                    join( ' ', sort map { $_->name } $bond->atoms ) .
+                    "\"/>\n";
+        }
+        $cml .= "    </bondArray>\n";
+    }
 
     $cml .= "  </molecule>\n";
     return $cml;
