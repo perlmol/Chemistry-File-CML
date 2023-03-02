@@ -193,7 +193,7 @@ sub write_string {
                 join( ' ', map { $_ . '="' . $attributes{$_} . '"' }
                            sort { ($b eq 'id') <=> ($a eq 'id') || $a cmp $b }
                                 keys %attributes ) .
-                ">\n";
+                "/>\n";
     }
     $cml .= "    </atomArray>\n";
 
