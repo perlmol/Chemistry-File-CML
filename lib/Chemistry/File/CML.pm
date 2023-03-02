@@ -187,11 +187,13 @@ sub file_is {
 }
 
 sub write_header {
-    print "<?xml version=\"1.0\"?>\n<cml xmlns=\"http://www.xml-cml.org/schema\">\n";
+    my ($self) = @_;
+    print $self->fh "<?xml version=\"1.0\"?>\n<cml xmlns=\"http://www.xml-cml.org/schema\">\n";
 }
 
 sub write_footer {
-    print "</cml>\n";
+    my ($self) = @_;
+    print $self->fh "</cml>\n";
 }
 
 1;
