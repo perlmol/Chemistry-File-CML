@@ -159,7 +159,6 @@ sub parse_string {
         }
 
         # calculate implicit hydrogens
-        # FIXME: Store implicit hydrogen count if given even if it is 0
         for my $id (sort keys %hydrogens_by_id) {
             my $atom = $mol->by_id( $id );
             my $explicit_hydrogens = scalar grep { $_->symbol eq 'H' }
@@ -169,7 +168,6 @@ sub parse_string {
                      "less than the number of explicit hydrogen atoms\n";
                 next;
             }
-            next if $explicit_hydrogens == $hydrogens_by_id{$id};
             $atom->implicit_hydrogens( $hydrogens_by_id{$id} - $explicit_hydrogens );
         }
     }
@@ -194,7 +192,7 @@ sub write_string {
         $attributes{formalCharge} = $atom->formal_charge if $atom->formal_charge;
         $attributes{isotopeNumber} = $atom->mass_number if $atom->mass_number;
 
-        if( $atom->implicit_hydrogens ) {
+        if( defined $atom->implicit_hydrogens ) {
             $attributes{hydrogenCount} =
                 $atom->implicit_hydrogens +
                 scalar grep { $_->symbol eq 'H' } $atom->neighbors;
