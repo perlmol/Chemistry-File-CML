@@ -190,8 +190,9 @@ sub write_string {
         }
 
         $cml .= '      <atom ' .
-                join( ' ', sort map { $_ . '="' . $attributes{$_} . '"' }
-                                    keys %attributes ) .
+                join( ' ', map { $_ . '="' . $attributes{$_} . '"' }
+                           sort { ($b eq 'id') <=> ($a eq 'id') || $a cmp $b }
+                                keys %attributes ) .
                 ">\n";
     }
     $cml .= "    </atomArray>\n";
