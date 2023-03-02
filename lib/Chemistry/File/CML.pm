@@ -190,6 +190,9 @@ sub write_string {
             ( $attributes{x3}, $attributes{y3}, $attributes{z3} ) = $atom->coords->array;
         }
 
+        $attributes{formalCharge} = $atom->formal_charge if $atom->formal_charge;
+        $attributes{isotopeNumber} = $atom->mass_number if $atom->mass_number;
+
         $cml .= '      <atom ' .
                 join( ' ', map { $_ . '="' . $attributes{$_} . '"' }
                            sort { ($b eq 'id') <=> ($a eq 'id') || $a cmp $b }
