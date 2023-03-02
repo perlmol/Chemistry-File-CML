@@ -262,7 +262,7 @@ Andrius Merkys <merkys@cpan.org>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2022 Andrius Merkys. All rights reserved. This program is
+Copyright (c) 2022-2023 Andrius Merkys. All rights reserved. This program is
 free software; you can redistribute it and/or modify it under the same terms as
 Perl itself.
 
