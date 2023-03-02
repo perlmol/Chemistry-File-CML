@@ -176,6 +176,30 @@ sub parse_string {
     return @molecules;
 }
 
+sub write_string {
+    my ($self, $mol, %opts) = @_;
+    my $cml = sprintf '  <molecule id="%s">' . "\n", $mol->name;
+
+    $cml .= "    <atomArray>\n";
+    for my $atom ($mol->atoms) {
+        my %attributes = ( id => $atom->name,
+                           elementType => $atom->symbol );
+
+        if( $atom->attr( 'cml/has_coords' ) ) {
+            ( $attributes{x3}, $attributes{y3}, $attributes{z3} ) = $atom->coords->array;
+        }
+
+        $cml .= '      <atom ' .
+                join( ' ', sort map { $_ . '="' . $attributes{$_} . '"' }
+                                    keys %attributes ) .
+                ">\n";
+    }
+    $cml .= "    </atomArray>\n";
+
+    $cml .= "  </molecule>\n";
+    return $cml;
+}
+
 sub name_is {
     my ($self, $fname) = @_;
     $fname =~ /\.cml$/i;
@@ -188,12 +212,14 @@ sub file_is {
 
 sub write_header {
     my ($self) = @_;
-    print $self->fh "<?xml version=\"1.0\"?>\n<cml xmlns=\"http://www.xml-cml.org/schema\">\n";
+    my $fh = $self->fh;
+    print $fh "<?xml version=\"1.0\"?>\n<cml xmlns=\"http://www.xml-cml.org/schema\">\n";
 }
 
 sub write_footer {
     my ($self) = @_;
-    print $self->fh "</cml>\n";
+    my $fh = $self->fh;
+    print $fh "</cml>\n";
 }
 
 1;
