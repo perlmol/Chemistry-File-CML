@@ -204,7 +204,8 @@ sub write_string {
         for my $bond ($mol->bonds) {
             $cml .= '      <bond atomRefs2="' .
                     join( ' ', sort map { $_->name } $bond->atoms ) .
-                    "\"/>\n";
+                    sprintf '" order="%s"/>' . "\n",
+                            $bond->type;
         }
         $cml .= "    </bondArray>\n";
     }
