@@ -193,6 +193,12 @@ sub write_string {
         $attributes{formalCharge} = $atom->formal_charge if $atom->formal_charge;
         $attributes{isotopeNumber} = $atom->mass_number if $atom->mass_number;
 
+        if( $atom->implicit_hydrogens ) {
+            $attributes{hydrogenCount} =
+                $atom->implicit_hydrogens +
+                scalar grep { $_->symbol eq 'H' } $atom->neighbors;
+        }
+
         $cml .= '      <atom ' .
                 join( ' ', map { $_ . '="' . $attributes{$_} . '"' }
                            sort { ($b eq 'id') <=> ($a eq 'id') || $a cmp $b }
