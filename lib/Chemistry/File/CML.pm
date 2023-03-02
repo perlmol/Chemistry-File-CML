@@ -13,7 +13,7 @@ our $DEBUG = 0;
 
 =head1 NAME
 
-Chemistry::File::CML - CML reader
+Chemistry::File::CML - Chemical Markup Language reader/writer
 
 =head1 SYNOPSIS
 
@@ -22,19 +22,21 @@ Chemistry::File::CML - CML reader
     # read a molecule
     my $mol = Chemistry::Mol->read('myfile.cml');
 
+    # write a molecule
+    $mol->write('myfile.cml');
+
 =cut
 
 Chemistry::Mol->register_format(cml => __PACKAGE__);
 
 =head1 DESCRIPTION
 
-Chemical Markup Language reader.
+Chemical Markup Language reader/writer.
 
 This module automatically registers the 'cml' format with L<Chemistry::Mol>.
 
-This version only reads some of the information available in CML files.
+This version reads and writer only some of the information available in CML files.
 It does not read stereochemistry yet, but this is envisaged in future.
-Writing CML files is not implemented yet too.
 
 This module is part of the PerlMol project, L<https://github.com/perlmol>.
 
