@@ -159,6 +159,7 @@ sub parse_string {
         }
 
         # calculate implicit hydrogens
+        # FIXME: Store implicit hydrogen count if given even if it is 0
         for my $id (sort keys %hydrogens_by_id) {
             my $atom = $mol->by_id( $id );
             my $explicit_hydrogens = scalar grep { $_->symbol eq 'H' }
@@ -212,7 +213,7 @@ sub write_string {
         $cml .= "    <bondArray>\n";
         for my $bond ($mol->bonds) {
             $cml .= '      <bond atomRefs2="' .
-                    join( ' ', sort map { $_->name } $bond->atoms ) .
+                    join( ' ', map { $_->name } $bond->atoms ) .
                     sprintf '" order="%s"/>' . "\n",
                             $bond->type;
         }
