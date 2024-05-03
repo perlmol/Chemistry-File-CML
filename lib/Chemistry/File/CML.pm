@@ -35,7 +35,7 @@ Chemical Markup Language reader/writer.
 
 This module automatically registers the 'cml' format with L<Chemistry::Mol>.
 
-This version reads and writer only some of the information available in CML files.
+This version reads and writes only some of the information available in CML files.
 It does not read stereochemistry yet, but this is envisaged in future.
 
 This module is part of the PerlMol project, L<https://github.com/perlmol>.
